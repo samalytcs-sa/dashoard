@@ -17,9 +17,7 @@ warnings.filterwarnings('ignore')
 
 # Initialize Dash app with Arabic RTL support
 app = dash.Dash(__name__, external_stylesheets=[
-    dbc.themes.BOOTSTRAP,
-    'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
+    dbc.themes.BOOTSTRAP
 ])
 app.title = "لوحة تحليل المشاعر والهاشتاغ العربية"
 
@@ -669,7 +667,11 @@ app.index_string = '''
         {%css%}
         <style>
             * {
-                font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+            }
+            body {
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                min-height: 100vh;
             }
             .rtl {
                 direction: rtl;
@@ -695,14 +697,6 @@ app.index_string = '''
                 direction: rtl;
                 text-align: right;
             }
-            .lucidya-gradient {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            }
-            .lucidya-card {
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-            }
         </style>
     </head>
     <body>
@@ -725,10 +719,10 @@ app.layout = html.Div([
                 html.Div([
                     html.H1("📊 منصة تحليل وسائل التواصل الاجتماعي", 
                            className="text-white mb-2 arabic-title rtl",
-                           style={'fontSize': '2.8rem', 'fontWeight': '700'}),
+                           style={'fontSize': '2.5rem', 'fontWeight': '700'}),
                     html.P("منصة متقدمة لتحليل المشاعر والذكاء الاجتماعي",
-                          className="text-white-50 mb-0 arabic-subtitle rtl",
-                          style={'fontSize': '1.2rem'})
+                          className="text-white mb-0 arabic-subtitle rtl",
+                          style={'fontSize': '1.1rem'})
                 ], style={
                     'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     'padding': '50px 40px',
@@ -749,7 +743,7 @@ app.layout = html.Div([
             dbc.Card([
                 dbc.CardHeader([
                     html.Div([
-                        html.I(className="fas fa-upload me-2", style={'color': '#00d4ff'}),
+                        html.Span("📁 ", style={'color': '#00d4ff', 'marginRight': '8px'}),
                         html.Span("رفع البيانات والإعدادات", style={'fontWeight': '600', 'color': 'white'})
                     ])
                 ], style={'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 'border': 'none', 'direction': 'rtl'}),
@@ -761,7 +755,7 @@ app.layout = html.Div([
                             dcc.Upload(
                                 id='upload-data',
                                 children=html.Div([
-                                    html.I(className="fas fa-cloud-upload-alt fa-2x mb-2", style={'color': '#667eea'}),
+                                    html.Span("☁️📤", style={'fontSize': '2rem', 'color': '#667eea', 'marginBottom': '8px'}),
                                     html.Br(),
                                     'اسحب وأفلت ملفات Excel أو انقر للتصفح'
                                 ], style={'textAlign': 'center', 'color': '#cccccc', 'direction': 'rtl'}),
