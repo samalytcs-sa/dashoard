@@ -12,7 +12,7 @@ matplotlib==3.7.2
 seaborn==0.12.2
 transformers==4.35.2
 torch==2.1.0
-numpy==1.24.3
+numpy==1.26.4
 requests==2.31.0
 google-generativeai==0.3.2
 statsmodels==0.14.0
