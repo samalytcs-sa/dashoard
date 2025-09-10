@@ -2,8 +2,11 @@ services:
   - type: web
     name: sentiment-dashboard
     env: python
-    buildCommand: pip install -r requirements.txt
+    runtime: python
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: python dash_app.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: PIP_NO_CACHE_DIR
+        value: 1
