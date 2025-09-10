@@ -79,7 +79,9 @@ app = dash.Dash(__name__, external_stylesheets=[
 app.title = "لوحة تحليل المشاعر والهاشتاغ العربية"
 
 # Configure Google Gemini AI
-genai.configure(api_key="AIzaSyBJIfFfVWjeJqNcwc4Z1_gt01IrgBOmZvE")
+import os
+api_key = os.environ.get('GEMINI_API_KEY', 'AIzaSyBJIfFfVWjeJqNcwc4Z1_gt01IrgBOmZvE')
+genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Global variables to store data
@@ -1163,7 +1165,7 @@ def create_sentiment_pie_chart(df):
             ),
             textinfo='percent',
             textposition='inside',
-            textfont=dict(size=16, color='white', family='Arial'),
+            textfont=dict(size=14, color='white', family='Arial'),
             pull=[0.05, 0.05, 0.05],  # Slightly separate all slices
             hovertemplate='<b>%{label}</b><br>العدد: %{value}<br>النسبة: %{percent}<extra></extra>',
             sort=False  # Keep original order
@@ -1173,9 +1175,9 @@ def create_sentiment_pie_chart(df):
         fig.update_layout(
             title=dict(
                 text="توزيع المشاعر",
-                font=dict(size=24, color='white', family='Arial', weight='bold'),
+                font=dict(size=18, color='white', family='Arial', weight='bold'),
                 x=0.5,
-                y=0.95
+                y=0.92
             ),
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
@@ -1184,20 +1186,20 @@ def create_sentiment_pie_chart(df):
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=-0.1,
+                y=-0.05,
                 xanchor="center",
                 x=0.5,
-                font=dict(size=14, color='white'),
+                font=dict(size=12, color='white'),
                 bgcolor='rgba(0,0,0,0)',
                 bordercolor='rgba(0,0,0,0)'
             ),
-            margin=dict(l=20, r=20, t=80, b=60),
-            height=450,
+            margin=dict(l=10, r=10, t=50, b=40),
+            height=320,
             annotations=[
                 dict(
                     text=f"إجمالي: {sum(values)}",
                     x=0.5, y=0.5,
-                    font=dict(size=18, color='white', weight='bold'),
+                    font=dict(size=14, color='white', weight='bold'),
                     showarrow=False
                 )
             ]
