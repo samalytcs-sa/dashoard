@@ -25,11 +25,31 @@ def detect_spam(text: str) -> bool:
     
     # Arabic spam keywords
     spam_keywords = [
-        'اربح', 'مال', 'مجاني', 'اتصل الآن', 'عرض خاص',
-        'خصم', 'مليون', 'دولار', 'ريال', 'فوز', 'جائزة',
-        'سريع', 'فوري', 'حصري', 'محدود', 'الآن فقط'
-    ]
-    
+    'اربح', 'مال', 'مجاني', 'اتصل الآن', 'عرض خاص',
+    'خصم', 'مليون', 'دولار', 'ريال', 'فوز', 'جائزة',
+    'سريع', 'فوري', 'حصري', 'محدود', 'الآن فقط',
+    'جنس', 'حب', 'ممارسة', 'علاقة', 'مداعبة', 'حميمية',
+    'رغبة', 'إثارة', 'مثير', 'قضيب', 'مهبل', 'صورة إباحية',
+    'فيلم إباحي', 'مباشر', 'عري', 'لقب', 'لعب', 'مثير جنسيًا',
+    'فضيحة', 'خيانة', 'ممارسة جنسية', 'شهوة', 'مغتصب', 'عشيق',
+    'عشيقة', 'مثير', 'نزوة', 'شرج', 'جماع', 'نكاح',
+    'عريانة', 'عشيقة', 'عضو تناسلي', 'قذف', 'مثير', 'استمناء',
+    'قسيمة', 'الفحولة', 'جيجل', 'المسيار', 'مسيار',
+    'الرابط', 'اتصل',
+    # Added words
+    'اشترِ الآن', 'توفير', 'اكسب', 'تخفيضات', 'عرض لفترة محدودة', 'فرصة رائعة',
+    'مجانًا', 'تحقق من', 'سعر خاص', 'حصريًا', 'لا تفوت', 'مكافأة',
+    'تسجيل مجاني', 'اطلب الآن', 'لا تنتظر', 'خصم كبير', 'سارع بالشراء',
+    'صفقة اليوم', 'محدود العدد', 'هدية مجانية', 'تخفيض فوري',
+    'اربح جائزة', 'الفرصة الأخيرة', 'قسط بدون فوائد', 'عرض مذهل',
+    'عروض حصرية', 'توصيل مجاني', 'مبلغ ضخم', 'فائز', 'ربح مضمون',
+    'سحب الجوائز', 'هبة', 'فرصة استثمار', 'مبلغ نقدي', 'زيادة الدخل',
+    'السرعة مهمة', 'لا تفوت العرض', 'توفير كبير', 'منتج جديد',
+    'تجربة مجانية', 'شراء الآن', 'فوز سهل', 'جائزة نقدية', 'ربح سريع',
+    'عرض خاص جدا', 'مفاجأة اليوم', 'خصم لا يقاوم', 'اشتر الآن',
+    'عرض حصري', 'فرصة لا تعوض', 'تسوق الآن', 'اكسب النقاط', 'هديتك بانتظارك'
+]
+
     # Check for spam keywords
     spam_score = sum(1 for keyword in spam_keywords if keyword in text_lower)
     
@@ -75,6 +95,145 @@ cached_ai_results = {
     'positive_tweets': [],
     'negative_tweets': []
 }
+
+def initialize_cache():
+    """Initialize the cache with empty values"""
+    global cached_ai_results
+    cached_ai_results = {
+        'sentiments': [],
+        'emotions': [],
+        'texts': [],
+        'summary': None,
+        'positive_tweets': [],
+        'negative_tweets': []
+    }
+    print("Cache initialized successfully")
+
+def ensure_sentiment_analysis(df):
+    """
+    Guaranteed sentiment analysis that always returns results
+    This function ensures we always have sentiment data for the pie chart
+    """
+    global cached_ai_results
+    
+    if df is None or df.empty:
+        print("DataFrame is None or empty")
+        return []
+    
+    print(f"DataFrame columns: {df.columns.tolist()}")
+    print(f"DataFrame shape: {df.shape}")
+    if len(df) > 0:
+        print(f"Sample row: {df.iloc[0].to_dict()}")
+    
+    # Find text column
+    text_col = find_text_column(df)
+    if not text_col or text_col not in df.columns:
+        print(f"No suitable text column found. Available columns: {df.columns.tolist()}")
+        # Try to use any column that might contain text
+        for col in df.columns:
+            if df[col].dtype == 'object' and not df[col].isna().all():
+                text_col = col
+                print(f"Using column '{col}' as text column")
+                break
+        
+        if not text_col:
+            print("No text column found at all")
+            return []
+    
+    print(f"Using text column: {text_col}")
+    
+    # Get texts and perform sentiment analysis
+    texts = df[text_col].dropna().tolist()
+    print(f"Found {len(texts)} non-null texts")
+    
+    if not texts:
+        print("No valid texts found")
+        return []
+    
+    # Test basic sentiment analysis
+    test_text = "This is a positive message!"
+    test_result = analyze_sentiment_basic(test_text)
+    print(f"Basic sentiment test: {test_result}")
+    
+    sentiments = []
+    print("Starting sentiment analysis...")
+    
+    for i, text in enumerate(texts[:100]):  # Limit to first 100 for performance
+        if isinstance(text, str) and len(text.strip()) >= 3:
+            try:
+                sentiment_result = analyze_sentiment_basic(str(text))
+                sentiment = sentiment_result[0] if isinstance(sentiment_result, tuple) else sentiment_result
+                sentiments.append(sentiment)
+                if i < 5:  # Debug first 5
+                    print(f"Text {i+1}: '{text[:50]}...' -> {sentiment}")
+            except Exception as e:
+                print(f"Error analyzing text {i+1}: {e}")
+                sentiments.append('neutral')
+        else:
+            sentiments.append('neutral')
+    
+    print(f"Generated {len(sentiments)} sentiment results")
+    print(f"Sentiment distribution: {Counter(sentiments)}")
+    
+    # Update cache
+    cached_ai_results['sentiments'] = sentiments
+    cached_ai_results['texts'] = texts[:len(sentiments)]
+    
+    print(f"Cache updated with {len(cached_ai_results['sentiments'])} sentiments")
+    
+    return sentiments
+
+# Initialize cache at startup
+initialize_cache()
+
+# Helper functions for robust data handling
+def find_column_safely(df, possible_names):
+    """Safely find a column from a list of possible names"""
+    if df is None or df.empty:
+        return None
+    for name in possible_names:
+        if name in df.columns:
+            return name
+    # Try partial matches
+    for name in possible_names:
+        for col in df.columns:
+            if name.lower() in col.lower():
+                return col
+    return None
+
+def find_text_column(df):
+    """Find the main text column in the dataframe"""
+    text_columns = ['text', 'content', 'tweet', 'message', 'post', 'description']
+    return find_column_safely(df, text_columns)
+
+def generate_empty_dashboard_response():
+    """Generate safe empty response for dashboard when errors occur"""
+    empty_fig = go.Figure()
+    empty_fig.add_annotation(
+        text="حدث خطأ في معالجة البيانات",
+        xref="paper", yref="paper",
+        x=0.5, y=0.5, xanchor='center', yanchor='middle',
+        showarrow=False,
+        font=dict(size=16, color='white')
+    )
+    empty_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white')
+    )
+    
+    return [
+        html.Div("لا توجد بيانات متاحة", className="text-white"),  # KPI cards
+        empty_fig,  # sentiment_chart
+        empty_fig,  # emotions_chart
+        empty_fig,  # hashtags_chart
+        empty_fig,  # engagement_chart
+        empty_fig,  # time_series_chart
+        empty_fig,  # places_chart
+        empty_fig,  # timeline_chart
+        empty_fig,  # tweets_per_minute_gauge
+        "لا توجد بيانات للتحليل"  # summary
+    ]
 
 def extract_hashtags(text):
     """Extract hashtags from text"""
@@ -156,6 +315,8 @@ Respond with only this JSON array format (no other text):
             else:
                 raise ValueError("No valid JSON array found in response")
             
+            print(f"AI response parsed successfully: {len(chunk_data)} results")
+            
             # Process each result in the chunk
             for idx, text in enumerate(chunk):
                 if idx < len(chunk_data):
@@ -166,6 +327,8 @@ Respond with only this JSON array format (no other text):
                         
                     confidence = float(result.get('confidence', 0.5))
                     emotions = result.get('emotions', {})
+                    
+                    print(f"AI result {idx+1}: {sentiment} (confidence: {confidence})")
                     
                     # Validate emotions
                     valid_emotions = {}
@@ -178,17 +341,20 @@ Respond with only this JSON array format (no other text):
                     sentiment, score = analyze_sentiment_basic(text)
                     emotions = analyze_emotions(text)
                     results.append((sentiment, score, emotions))
+                    print(f"Fallback result {idx+1}: {sentiment} (score: {score})")
             
             # Small delay between chunks to avoid rate limiting
             time.sleep(0.5)
             
         except Exception as e:
             print(f"Chunk AI analysis failed, falling back to basic analysis for chunk: {e}")
+            print(f"Response text was: {response_text[:200] if 'response_text' in locals() else 'No response'}")
             # Fallback to basic analysis for current chunk
             for text in chunk:
                 sentiment, score = analyze_sentiment_basic(text)
                 emotions = analyze_emotions(text)
                 results.append((sentiment, score, emotions))
+                print(f"Basic analysis result: {sentiment} (score: {score})")
     
     return results
 
@@ -477,17 +643,11 @@ def calculate_engagement_metrics(df):
     time_col = None
     user_col = None
     
-    # Find appropriate columns
-    for col in df.columns:
-        col_lower = col.lower()
-        if 'favorite' in col_lower or 'like' in col_lower:
-            favorites_col = col
-        elif 'retweet' in col_lower:
-            retweets_col = col
-        elif 'time' in col_lower or 'date' in col_lower:
-            time_col = col
-        elif 'user' in col_lower or 'screen' in col_lower or 'name' in col_lower:
-            user_col = col
+    # Find appropriate columns using safe detection
+    favorites_col = find_column_safely(df, ['favorites', 'favorite_count', 'likes', 'like_count', 'fav_count'])
+    retweets_col = find_column_safely(df, ['retweets', 'retweet_count', 'rt_count', 'shares'])
+    time_col = find_column_safely(df, ['time', 'timestamp', 'created_at', 'date', 'datetime', 'posted_at'])
+    user_col = find_column_safely(df, ['SenderScreenName', 'user', 'username', 'screen_name', 'user_name', 'author', 'name', 'user_id', 'screen_name_s'])
     
     # Calculate metrics
     try:
@@ -520,6 +680,9 @@ def calculate_engagement_metrics(df):
         unique_users = 1
         if user_col and user_col in df.columns:
             unique_users = df[user_col].nunique()
+            print(f"Debug: Found user column '{user_col}' with {unique_users} unique users")
+        else:
+            print(f"Debug: No user column found. Available columns: {list(df.columns)}")
         
         return {
             'max_tweet_per_minute': int(max_tweet_per_minute),
@@ -545,22 +708,35 @@ def analyze_tweets_per_minute_level(max_tweet_per_minute):
     else:
         return 5, 'Very low'
 
-def create_tweets_per_minute_gauge(level):
+def create_tweets_per_minute_gauge(level, max_tweets_per_minute=0):
     """
-    Create a tweets per minute gauge chart
+    Create an enhanced tweets per minute gauge chart with Arabic support
     """
     import numpy as np
     
-    plot_bgcolor = 'rgba(192,192,192,.0)'
-    quadrant_colors = [plot_bgcolor, "#f25829", "#f2a529", "#eff229", "#85e043"]
-    quadrant_text = ["", "<b>level three</b>", "<b>level two </b>", "<b>level one </b>", "<b>Very low</b>"]
+    # Enhanced color scheme for better visibility
+    plot_bgcolor = 'rgba(0,0,0,0)'
+    quadrant_colors = [plot_bgcolor, "#dc3545", "#fd7e14", "#ffc107", "#28a745"]
+    quadrant_text = ["", "<b>مستوى عالي</b>", "<b>مستوى متوسط</b>", "<b>مستوى منخفض</b>", "<b>مستوى ضعيف</b>"]
     n_quadrants = len(quadrant_colors) - 1
     
-    current_value = level
+    current_value = min(max(level, 0), 50)  # Clamp between 0 and 50
     min_value = 0
     max_value = 50
-    hand_length = np.sqrt(2) / 4
-    hand_angle = np.pi * (1 - (max(min_value, min(max_value, current_value)) - min_value) / (max_value - min_value))
+    
+    # Determine activity level and color
+    if current_value >= 30:
+        activity_level = "نشاط عالي"
+        level_color = "#dc3545"
+    elif current_value >= 20:
+        activity_level = "نشاط متوسط"
+        level_color = "#fd7e14"
+    elif current_value >= 10:
+        activity_level = "نشاط منخفض"
+        level_color = "#ffc107"
+    else:
+        activity_level = "نشاط ضعيف"
+        level_color = "#28a745"
     
     fig = go.Figure(
         data=[
@@ -572,40 +748,49 @@ def create_tweets_per_minute_gauge(level):
                 text=quadrant_text,
                 textinfo="text",
                 hoverinfo="skip",
+                textfont=dict(size=10, color='white', family="Cairo, Arial, sans-serif")
             ),
         ],
         layout=go.Layout(
             showlegend=False,
-            margin=dict(b=0, t=10, l=10, r=10),
-            width=450,
-            height=450,
+            margin=dict(b=20, t=20, l=20, r=20),
+            width=300,
+            height=300,
             paper_bgcolor=plot_bgcolor,
             plot_bgcolor=plot_bgcolor,
+            font=dict(family="Cairo, Arial, sans-serif", color='white'),
             annotations=[
                 go.layout.Annotation(
-                    text=f"<b>Tweets Per Minute Level</b><br>{current_value}",
+                    text=f"<b style='color:{level_color}; font-size:16px;'>{max_tweets_per_minute}</b><br><span style='color:#6c757d; font-size:12px;'>تغريدة/دقيقة</span><br><span style='color:{level_color}; font-size:11px;'>{activity_level}</span>",
                     x=0.5, xanchor="center", xref="paper",
-                    y=0.25, yanchor="bottom", yref="paper",
+                    y=0.5, yanchor="middle", yref="paper",
                     showarrow=False,
-                    font=dict(size=16, color="white")
-                )
-            ],
-            shapes=[
-                go.layout.Shape(
-                    type="circle",
-                    x0=0.48, x1=0.52,
-                    y0=0.48, y1=0.52,
-                    fillcolor="#333",
-                    line_color="#333",
-                ),
-                go.layout.Shape(
-                    type="line",
-                    x0=0.5, x1=0.5 + hand_length * np.cos(hand_angle),
-                    y0=0.5, y1=0.5 + hand_length * np.sin(hand_angle),
-                    line=dict(color="#333", width=4)
+                    font=dict(size=14, color="white", family="Cairo, Arial, sans-serif")
                 )
             ]
         )
+    )
+    
+    # Add needle/pointer
+    hand_length = 0.4
+    hand_angle = np.pi * (1 - (current_value - min_value) / (max_value - min_value))
+    
+    fig.add_shape(
+        type="line",
+        x0=0.5, y0=0.5,
+        x1=0.5 + hand_length * np.cos(hand_angle),
+        y1=0.5 + hand_length * np.sin(hand_angle),
+        line=dict(color=level_color, width=4),
+        xref="paper", yref="paper"
+    )
+    
+    # Add center circle
+    fig.add_shape(
+        type="circle",
+        x0=0.48, y0=0.48, x1=0.52, y1=0.52,
+        fillcolor=level_color,
+        line=dict(color=level_color, width=2),
+        xref="paper", yref="paper"
     )
     
     return fig
@@ -841,60 +1026,181 @@ def create_time_series_chart(df, time_period):
 
 def create_sentiment_pie_chart(df):
     """
-    Create pie chart for sentiment distribution
+    Create modern flat pie chart for sentiment distribution with AI cache priority and fallback
     """
+    global cached_ai_results
+    
     if df is None or df.empty:
         fig = go.Figure()
         fig.add_annotation(
-            text="No data available for sentiment analysis",
+            text="لا توجد بيانات متاحة لتحليل المشاعر",
             xref="paper", yref="paper",
             x=0.5, y=0.5, xanchor='center', yanchor='middle',
-            showarrow=False
+            showarrow=False,
+            font=dict(size=16, color='white')
+        )
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white')
         )
         return fig
-    
-    # Find text column
-    text_columns = [col for col in df.columns if 'text' in col.lower() or 'content' in col.lower() or 'tweet' in col.lower()]
-    
-    if not text_columns:
-        fig = go.Figure()
-        fig.add_annotation(
-            text="No text column found in the data",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, xanchor='center', yanchor='middle',
-            showarrow=False
-        )
-        return fig
-    
-    text_col = text_columns[0]
     
     try:
-        # Analyze sentiments
         sentiments = []
-        for text in df[text_col].dropna():
-            sentiment = analyze_sentiment_basic(str(text))
-            sentiments.append(sentiment)
         
-        # Count sentiments
+        # Use cached results if available, otherwise perform basic analysis
+        if cached_ai_results['sentiments'] and len(cached_ai_results['sentiments']) > 0:
+            print(f"Using cached AI sentiment results: {len(cached_ai_results['sentiments'])} sentiments")
+            sentiments = cached_ai_results['sentiments']
+        else:
+            print("No cached results found, performing basic sentiment analysis...")
+            
+            # Find text column using your helper function
+            text_col = find_text_column(df)
+            
+            if not text_col or text_col not in df.columns:
+                print("No suitable text column found")
+                fig = go.Figure()
+                fig.add_annotation(
+                    text="لم يتم العثور على عمود النص في البيانات",
+                    xref="paper", yref="paper",
+                    x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                    showarrow=False,
+                    font=dict(size=16, color='white')
+                )
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white')
+                )
+                return fig
+            
+            print(f"Processing {len(df[text_col].dropna())} texts for basic sentiment analysis...")
+            
+            # Perform basic sentiment analysis
+            for text in df[text_col].dropna():
+                if isinstance(text, str) and len(text.strip()) >= 3:
+                    sentiment_result = analyze_sentiment_basic(str(text))
+                    sentiment = sentiment_result[0] if isinstance(sentiment_result, tuple) else sentiment_result
+                    sentiments.append(sentiment)
+                else:
+                    sentiments.append('neutral')
+            
+            # Update cache with basic analysis results
+            cached_ai_results['sentiments'] = sentiments
+            print(f"Generated {len(sentiments)} basic sentiment results and updated cache")
+        
+        # Create pie chart from sentiment counts
         sentiment_counts = Counter(sentiments)
+        print(f"Final sentiment counts: {sentiment_counts}")
         
-        # Create pie chart
+        if not sentiment_counts:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="لا توجد بيانات مشاعر متاحة",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                showarrow=False,
+                font=dict(size=16, color='white')
+            )
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white')
+            )
+            return fig
+        
+        # Prepare data for pie chart
+        arabic_labels = []
+        values = []
+        colors = []
+        
+        # Arabic labels and modern colors
+        label_mapping = {
+            'positive': 'إيجابي',
+            'negative': 'سلبي', 
+            'neutral': 'محايد'
+        }
+        
+        # Modern flat color scheme
+        color_mapping = {
+            'positive': '#2DD4BF',  # Modern teal
+            'negative': '#F87171',  # Modern coral red
+            'neutral': '#60A5FA'    # Modern blue
+        }
+        
+        for sentiment, count in sentiment_counts.items():
+            if count > 0:
+                arabic_labels.append(label_mapping.get(sentiment, sentiment))
+                values.append(count)
+                colors.append(color_mapping.get(sentiment, '#60A5FA'))
+        
+        if not values:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="لا توجد بيانات صالحة للعرض",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                showarrow=False,
+                font=dict(size=16, color='white')
+            )
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white')
+            )
+            return fig
+        
+        # Create modern flat pie chart
         fig = go.Figure(data=[go.Pie(
-            labels=list(sentiment_counts.keys()),
-            values=list(sentiment_counts.values()),
-            hole=0.3,
-            marker_colors=['#ff6b6b', '#4ecdc4', '#45b7d1']
+            labels=arabic_labels,
+            values=values,
+            hole=0.3,  # Small hole for modern donut look
+            marker=dict(
+                colors=colors,
+                line=dict(color='white', width=3)  # Clean white borders
+            ),
+            textinfo='percent',
+            textposition='inside',
+            textfont=dict(size=16, color='white', family='Arial'),
+            pull=[0.05, 0.05, 0.05],  # Slightly separate all slices
+            hovertemplate='<b>%{label}</b><br>العدد: %{value}<br>النسبة: %{percent}<extra></extra>',
+            sort=False  # Keep original order
         )])
         
+        # Modern clean layout
         fig.update_layout(
             title=dict(
                 text="توزيع المشاعر",
-                font=dict(size=18, color='white'),
-                x=0.5
+                font=dict(size=24, color='white', family='Arial', weight='bold'),
+                x=0.5,
+                y=0.95
             ),
-            plot_bgcolor='#1e1e1e',
-            paper_bgcolor='#2d2d2d',
-            font=dict(size=12, color='white')
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(size=14, color='white', family='Arial'),
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.1,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=14, color='white'),
+                bgcolor='rgba(0,0,0,0)',
+                bordercolor='rgba(0,0,0,0)'
+            ),
+            margin=dict(l=20, r=20, t=80, b=60),
+            height=450,
+            annotations=[
+                dict(
+                    text=f"إجمالي: {sum(values)}",
+                    x=0.5, y=0.5,
+                    font=dict(size=18, color='white', weight='bold'),
+                    showarrow=False
+                )
+            ]
         )
         
         return fig
@@ -903,10 +1209,16 @@ def create_sentiment_pie_chart(df):
         print(f"Error creating sentiment pie chart: {e}")
         fig = go.Figure()
         fig.add_annotation(
-            text=f"Error creating sentiment pie chart: {str(e)}",
+            text=f"خطأ في إنشاء مخطط المشاعر: {str(e)}",
             xref="paper", yref="paper",
             x=0.5, y=0.5, xanchor='center', yanchor='middle',
-            showarrow=False
+            showarrow=False,
+            font=dict(size=14, color='white')
+        )
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white')
         )
         return fig
 
@@ -1413,35 +1725,7 @@ app.layout = html.Div([
                 ], style={'padding': '20px'})
             ], style={'boxShadow': '0 8px 25px rgba(102, 126, 234, 0.15)', 'border': '1px solid rgba(255, 255, 255, 0.1)', 'borderRadius': '16px', 'marginBottom': '25px', 'background': 'rgba(255, 255, 255, 0.95)', 'backdropFilter': 'blur(10px)'}),
             
-            # Tweets Per Minute Panel
-            dbc.Card([
-                dbc.CardHeader([
-                    html.Div([
-                        html.I(className="fas fa-tachometer-alt me-2", style={'color': '#28a745'}),
-                        html.Span("مقياس التغريدات في الدقيقة", style={'fontWeight': '600', 'color': 'white'})
-                    ])
-                ], style={'background': 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', 'border': 'none', 'direction': 'rtl'}),
-                dbc.CardBody([
-                    html.Div(id='tweets-per-minute-content', children=[
-                        html.H4("0", id='spam-count', className="text-center mb-2", style={'color': '#dc3545', 'fontWeight': '700'}),
-                        html.P("رسائل مشبوهة", className="text-center text-muted mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Checklist(
-                                    id='spam-filter',
-                                    options=[{'label': '🚫 إخفاء الرسائل المشبوهة', 'value': 'hide_spam'}],
-                                    value=[],
-                                    className="mb-2"
-                                )
-                            ])
-                        ]),
-                        html.Hr(),
-                        html.Div(id='spam-details', children=[
-                            html.P("نسبة الرسائل المشبوهة: 0%", id='spam-percentage', className="text-muted small")
-                        ])
-                    ])
-                ], style={'padding': '20px'})
-            ], style={'boxShadow': '0 8px 25px rgba(40, 167, 69, 0.15)', 'border': '1px solid rgba(255, 255, 255, 0.1)', 'borderRadius': '16px', 'marginBottom': '25px', 'background': 'rgba(255, 255, 255, 0.95)', 'backdropFilter': 'blur(10px)'}),
+
             
             # AI Summary Panel
             dbc.Card([
@@ -1531,35 +1815,7 @@ app.layout = html.Div([
         ], width=6)
     ], className="mb-4"),
     
-    # New Visualizations Section
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.Div([
-                        html.I(className="fas fa-chart-pie me-2", style={'color': '#17a2b8'}),
-                        html.Span("توزيع المشاعر - مخطط دائري", style={'fontWeight': '600', 'color': 'white'})
-                    ])
-                ], style={'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 'border': 'none', 'direction': 'rtl'}),
-                dbc.CardBody([
-                    dcc.Graph(id='sentiment-pie-chart', style={'height': '400px'})
-                ], style={'padding': '20px'})
-            ], style={'boxShadow': '0 8px 25px rgba(102, 126, 234, 0.15)', 'border': '1px solid rgba(255, 255, 255, 0.1)', 'borderRadius': '16px', 'background': 'rgba(255, 255, 255, 0.95)', 'backdropFilter': 'blur(10px)'})
-        ], width=6),
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.Div([
-                        html.I(className="fas fa-chart-bar me-2", style={'color': '#ffc107'}),
-                        html.Span("تحليل المشاعر التفصيلي", style={'fontWeight': '600', 'color': 'white'})
-                    ])
-                ], style={'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 'border': 'none', 'direction': 'rtl'}),
-                dbc.CardBody([
-                    dcc.Graph(id='emotions-bar-chart', style={'height': '400px'})
-                ], style={'padding': '20px'})
-            ], style={'boxShadow': '0 8px 25px rgba(102, 126, 234, 0.15)', 'border': '1px solid rgba(255, 255, 255, 0.1)', 'borderRadius': '16px', 'background': 'rgba(255, 255, 255, 0.95)', 'backdropFilter': 'blur(10px)'})
-        ], width=6)
-    ], className="mb-4"),
+
     
     dbc.Row([
         dbc.Col([
@@ -1653,27 +1909,22 @@ def update_time_series_chart(time_period):
       Output('source-chart', 'figure'),
       Output('emotion-chart', 'figure'),
       Output('engagement-scatter', 'figure'),
-      Output('sentiment-pie-chart', 'figure'),
-      Output('emotions-bar-chart', 'figure'),
       Output('places-bar-chart', 'figure'),
       Output('tweets-timeline-chart', 'figure'),
       Output('analysis-summary', 'children'),
       Output('social-network-filter', 'options'),
       Output('engagement-filter', 'options'),
       Output('positive-tweets-content', 'children'),
-      Output('negative-tweets-content', 'children'),
-      Output('spam-count', 'children'),
-      Output('spam-percentage', 'children')],
+      Output('negative-tweets-content', 'children')],
     [Input('upload-data', 'contents'),
      Input('min-followers', 'value'),
      Input('min-retweets', 'value'),
      Input('social-network-filter', 'value'),
      Input('engagement-filter', 'value'),
-     Input('high-influence-filter', 'value'),
-     Input('spam-filter', 'value')],
+     Input('high-influence-filter', 'value')],
     [State('upload-data', 'filename')]
 )
-def update_dashboard(contents, min_followers, min_retweets, social_networks, engagement_types, high_influence, spam_filter, filenames):
+def update_dashboard(contents, min_followers, min_retweets, social_networks, engagement_types, high_influence, filenames):
     global df1, df2
     
     print(f"Callback triggered: contents={contents is not None}, filenames={filenames}")
@@ -1716,19 +1967,18 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
         return (
                 dbc.Alert("Please upload Excel files to begin analysis.", color="info"),
                 empty_kpi_cards,
-                empty_fig,
-                empty_fig,
-                empty_fig,
+                empty_fig,  # hashtag chart
+                empty_fig,  # sentiment chart
+                empty_fig,  # source chart
                 empty_fig,  # emotion chart
                 empty_fig,  # engagement scatter
-                empty_fig,  # spam level gauge
+                empty_fig,  # places bar chart
+                empty_fig,  # tweets timeline chart
                 html.P("No data available for summary."),  # analysis summary
                 [],  # social network options
                 [],  # engagement options
                 html.P("No positive tweets to display."),  # positive tweets
-                html.P("No negative tweets to display."),   # negative tweets
-                "0",  # spam count
-                "نسبة الرسائل المشبوهة: 0%"  # spam percentage
+                html.P("No negative tweets to display.")   # negative tweets
             )
     
     try:
@@ -1757,19 +2007,20 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
             return (
                 dbc.Alert("Please upload at least 1 Excel file.", color="warning"),
                 empty_kpi_cards,
-                go.Figure(),
-                go.Figure(),
+                go.Figure(),  # hashtag chart
+                go.Figure(),  # sentiment chart
                 go.Figure(),  # source chart
                 go.Figure(),  # emotion chart
                 go.Figure(),  # engagement scatter
-                go.Figure(),  # tweets per minute gauge
+                go.Figure(),  # sentiment pie chart
+                go.Figure(),  # emotions bar chart
+                go.Figure(),  # places bar chart
+                go.Figure(),  # tweets timeline chart
                 html.P("No data available for summary."),  # analysis summary
                 [],  # social network options
                 [],  # engagement options
                 html.P("No positive tweets to display."),  # positive tweets
-                html.P("No negative tweets to display."),   # negative tweets
-                "0",  # spam count
-                "نسبة الرسائل المشبوهة: 0%"  # spam percentage
+                html.P("No negative tweets to display.")   # negative tweets
             )
         
         # Parse the uploaded files
@@ -1828,12 +2079,14 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                 print(f"Error processing {filename}: {str(e)}")
                 return (
                     dbc.Alert(f"Error reading {filename}: {str(e)}", color="danger"),
-                    dbc.Alert("Error processing files.", color="danger"),
-                    go.Figure(),
-                    go.Figure(),
+                    html.Div(),  # empty kpi cards
+                    go.Figure(),  # hashtag chart
+                    go.Figure(),  # sentiment chart
                     go.Figure(),  # source chart
                     go.Figure(),  # emotion chart
                     go.Figure(),  # engagement scatter
+                    go.Figure(),  # places bar chart
+                    go.Figure(),  # tweets timeline chart
                     html.P("No data available for summary."),  # analysis summary
                     [],  # social network options
                     [],  # engagement options
@@ -1860,13 +2113,9 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
         social_network_cols = ['SocialNetwork', 'social_network']
         engagement_cols = ['Engagement Type', 'engagement_type']
         
-        # Apply follower filter
+        # Apply follower filter using safe column detection
         if min_followers is not None:
-            follower_col = None
-            for col in follower_cols:
-                if col in filtered_df.columns:
-                    follower_col = col
-                    break
+            follower_col = find_column_safely(filtered_df, follower_cols)
             
             if follower_col:
                 # Convert to numeric, handling any non-numeric values
@@ -1874,13 +2123,9 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                 filtered_df = filtered_df[filtered_df[follower_col] >= min_followers]
                 print(f"After follower filter (>={min_followers}): {len(filtered_df)} rows")
         
-        # Apply retweet filter
+        # Apply retweet filter using safe column detection
         if min_retweets is not None:
-            retweet_col = None
-            for col in retweet_cols:
-                if col in filtered_df.columns:
-                    retweet_col = col
-                    break
+            retweet_col = find_column_safely(filtered_df, retweet_cols)
             
             if retweet_col:
                 # Convert to numeric, handling any non-numeric values
@@ -1888,25 +2133,17 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                 filtered_df = filtered_df[filtered_df[retweet_col] >= min_retweets]
                 print(f"After retweet filter (>={min_retweets}): {len(filtered_df)} rows")
         
-        # Apply social network filter
+        # Apply social network filter using safe column detection
         if social_networks:
-            social_col = None
-            for col in social_network_cols:
-                if col in filtered_df.columns:
-                    social_col = col
-                    break
+            social_col = find_column_safely(filtered_df, social_network_cols)
             
             if social_col:
                 filtered_df = filtered_df[filtered_df[social_col].isin(social_networks)]
                 print(f"After social network filter: {len(filtered_df)} rows")
         
-        # Apply engagement type filter
+        # Apply engagement type filter using safe column detection
         if engagement_types:
-            engagement_col = None
-            for col in engagement_cols:
-                if col in filtered_df.columns:
-                    engagement_col = col
-                    break
+            engagement_col = find_column_safely(filtered_df, engagement_cols)
             
             if engagement_col:
                 filtered_df = filtered_df[filtered_df[engagement_col].isin(engagement_types)]
@@ -1933,23 +2170,9 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                 text_col = col
                 break
         
-        spam_count = 0
         total_tweets = len(filtered_df)
         
-        if text_col:
-            # Add spam detection column
-            filtered_df['is_spam'] = filtered_df[text_col].fillna('').apply(detect_spam)
-            spam_count = filtered_df['is_spam'].sum()
-            
-            # Apply spam filter if enabled
-            if spam_filter and 'remove_spam' in spam_filter:
-                filtered_df = filtered_df[~filtered_df['is_spam']]
-                print(f"After spam filter: {len(filtered_df)} rows (removed {spam_count} spam tweets)")
-        
-        # Calculate spam statistics
-        spam_percentage = (spam_count / total_tweets * 100) if total_tweets > 0 else 0
-        spam_count_text = f"{spam_count}"
-        spam_percentage_text = f"نسبة الرسائل المشبوهة: {spam_percentage:.1f}%"
+        # Spam calculation removed - now using tweets per minute analysis
         
         # Generate filter options from original data
         social_network_options = []
@@ -2012,6 +2235,10 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                 break
         
         print(f"Column mapping: text_column='{text_column}', hashtag_column='{hashtag_column}'")
+        print(f"DataFrame columns: {list(combined_df.columns)}")
+        print(f"DataFrame shape: {combined_df.shape}")
+        if len(combined_df) > 0:
+            print(f"Sample row: {combined_df.iloc[0].to_dict()}")
         
         # If no text column found, use the first string column or create dummy data
         if not text_column:
@@ -2037,14 +2264,41 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
         if hashtag_column != 'hashtags':
             combined_df['hashtags'] = combined_df[hashtag_column]
         
-        # Professional KPI Cards Matrix
+        # Professional KPI Cards Matrix with robust data handling
         print("Creating KPI dashboard...")
         
-        # Calculate key metrics
-        total_posts = len(filtered_df)
-        total_files = len(dfs)
-        avg_engagement = filtered_df.get('retweet_count', pd.Series([0])).mean() if 'retweet_count' in filtered_df.columns else 0
-        high_influence_count = len(filtered_df[filtered_df.get('followers_count', pd.Series([0])) > 25000]) if 'followers_count' in filtered_df.columns else 0
+        # Calculate key metrics with safe data access
+        total_posts = len(filtered_df) if filtered_df is not None else 0
+        total_files = len(dfs) if dfs else 0
+        
+        # Safe engagement calculation
+        engagement_metrics = calculate_engagement_metrics(filtered_df) if filtered_df is not None else {}
+        avg_engagement = engagement_metrics.get('retweets', 0)
+        
+        # Safe follower count calculation
+        follower_col = find_column_safely(filtered_df, ['followers_count', 'follower_count', 'followers']) if filtered_df is not None else None
+        high_influence_count = 0
+        if follower_col and filtered_df is not None:
+            try:
+                follower_series = pd.to_numeric(filtered_df[follower_col], errors='coerce')
+                high_influence_count = len(follower_series[follower_series > 25000])
+            except Exception as e:
+                print(f"Error calculating high influence count: {e}")
+                high_influence_count = 0
+        
+        # Add spam detection integration
+        spam_count = 0
+        spam_percentage = 0
+        text_col = find_text_column(filtered_df) if filtered_df is not None else None
+        if text_col and filtered_df is not None:
+            try:
+                spam_count = sum(1 for text in filtered_df[text_col].dropna() 
+                               if detect_spam(str(text)))
+                spam_percentage = (spam_count / len(filtered_df)) * 100 if len(filtered_df) > 0 else 0
+            except Exception as e:
+                print(f"Error calculating spam metrics: {e}")
+                spam_count = 0
+                spam_percentage = 0
         
         # Create KPI cards
         kpi_cards = dbc.Row([
@@ -2135,6 +2389,53 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                     'height': '140px'
                 })
             ], width=3)
+        ], className="mb-4"),
+        
+        # Second row of KPI cards with spam detection
+        dbc.Row([
+            # Spam Detection Card
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.Div([
+                                html.I(className="fas fa-shield-alt fa-2x", style={'color': '#e74c3c'}),
+                            ], style={'textAlign': 'center', 'marginBottom': '10px'}),
+                            html.H2(f"{spam_percentage:.1f}%", className="text-center mb-0", style={'color': '#2c3e50', 'fontWeight': '700'}),
+                            html.P(f"Spam Detected ({spam_count})", className="text-center text-muted mb-0", style={'fontSize': '0.9rem'})
+                        ])
+                    ], style={'padding': '20px'})
+                ], style={
+                    'background': 'linear-gradient(135deg, #ff7675 0%, #d63031 100%)',
+                    'border': 'none',
+                    'borderRadius': '15px',
+                    'boxShadow': '0 8px 25px rgba(255, 118, 117, 0.3)',
+                    'color': 'white',
+                    'height': '140px'
+                })
+            ], width=3),
+            
+            # Quality Score Card
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.Div([
+                            html.Div([
+                                html.I(className="fas fa-check-circle fa-2x", style={'color': '#00b894'}),
+                            ], style={'textAlign': 'center', 'marginBottom': '10px'}),
+                            html.H2(f"{100 - spam_percentage:.1f}%", className="text-center mb-0", style={'color': '#2c3e50', 'fontWeight': '700'}),
+                            html.P("Quality Score", className="text-center text-muted mb-0", style={'fontSize': '0.9rem'})
+                        ])
+                    ], style={'padding': '20px'})
+                ], style={
+                    'background': 'linear-gradient(135deg, #00b894 0%, #00a085 100%)',
+                    'border': 'none',
+                    'borderRadius': '15px',
+                    'boxShadow': '0 8px 25px rgba(0, 184, 148, 0.3)',
+                    'color': 'white',
+                    'height': '140px'
+                })
+            ], width=3)
         ], className="mb-4")
         
         data_overview = kpi_cards
@@ -2186,6 +2487,15 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                 showarrow=False
             )
         
+        # Ensure sentiment analysis is performed and cached
+        print("Ensuring sentiment analysis is available...")
+        ensure_sentiment_analysis(combined_df)
+        
+        # Test basic sentiment analysis
+        test_text = "This is a positive message!"
+        result = analyze_sentiment_basic(test_text)
+        print(f"Basic sentiment test: {result}")
+        
         # Use cached sentiment analysis results
         print("Using cached sentiment analysis for pie chart...")
         all_sentiments = cached_ai_results.get('sentiments', [])
@@ -2199,67 +2509,7 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
         print(f"Sentiment distribution: {dict(sentiment_counts)}")
         
         if all_sentiments:
-            # Create Arabic labels for sentiments
-            arabic_labels = {
-                'positive': 'إيجابي',
-                'negative': 'سلبي', 
-                'neutral': 'محايد'
-            }
-            
-            # Map English sentiment names to Arabic
-            arabic_names = [arabic_labels.get(name, name) for name in sentiment_counts.keys()]
-            
-            # Create professional color scheme
-            colors = {
-                'إيجابي': '#28a745',  # Green for positive
-                'سلبي': '#dc3545',    # Red for negative
-                'محايد': '#6c757d'    # Gray for neutral
-            }
-            
-            sentiment_fig = px.pie(
-                values=list(sentiment_counts.values()),
-                names=arabic_names,
-                title="توزيع المشاعر",
-                color=arabic_names,
-                color_discrete_map=colors
-            )
-            
-            # Update layout for better Arabic support and professional look
-            sentiment_fig.update_layout(
-                font=dict(
-                    family="Cairo, Arial, sans-serif",
-                    size=14,
-                    color="#2c3e50"
-                ),
-                title=dict(
-                    text="توزيع المشاعر",
-                    x=0.5,
-                    font=dict(size=18, weight='bold', color='#2c3e50')
-                ),
-                showlegend=True,
-                legend=dict(
-                    orientation="v",
-                    yanchor="middle",
-                    y=0.5,
-                    xanchor="left",
-                    x=1.05,
-                    font=dict(size=12)
-                ),
-                margin=dict(l=20, r=80, t=60, b=20),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
-            
-            # Update traces for better appearance
-            sentiment_fig.update_traces(
-                textposition='inside',
-                textinfo='percent+label',
-                textfont_size=12,
-                marker=dict(
-                    line=dict(color='#ffffff', width=2)
-                ),
-                pull=[0.05, 0.05, 0.05]  # Slightly separate slices
-            )
+            sentiment_fig = create_sentiment_pie_chart(filtered_df)
         else:
             print("No sentiment data available, creating empty chart")
             sentiment_fig = go.Figure()
@@ -2586,8 +2836,6 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
         
         print("Callback processing completed successfully!")
         # Create new visualizations
-        sentiment_pie_fig = create_sentiment_pie_chart(filtered_df)
-        emotions_bar_fig = create_emotions_bar_chart(filtered_df)
         places_bar_fig = create_places_bar_chart(filtered_df)
         tweets_timeline_fig = create_tweets_timeline_chart(filtered_df)
         
@@ -2597,22 +2845,28 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
         tweets_per_minute_level, level_text = analyze_tweets_per_minute_level(max_tweets_per_minute)
         tweets_per_minute_gauge = create_tweets_per_minute_gauge(tweets_per_minute_level)
         
+        # Combine comprehensive KPI cards (data_overview includes spam detection)
+        comprehensive_kpi_cards = html.Div([
+            data_overview,  # First row with spam detection
+            updated_kpi_cards  # Second row with engagement metrics
+        ])
+        
         return (
             dbc.Alert(f"Successfully uploaded {len(contents)} files! Showing {len(filtered_df)} rows after filtering.", color="success"),
-            updated_kpi_cards,
+            comprehensive_kpi_cards,
             hashtag_fig,
             sentiment_fig,
             source_fig,
             emotion_fig,
             engagement_fig,
-            tweets_per_minute_gauge,
+            places_bar_fig,
+            tweets_timeline_fig,
             summary_content,
             social_network_options,
             engagement_options,
             positive_content,
             negative_content,
-            spam_count_text,
-            spam_percentage_text
+
         )
         
     except Exception as e:
@@ -2644,15 +2898,15 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
             go.Figure(),  # source chart
             go.Figure(),  # emotion chart
             go.Figure(),  # engagement scatter
-            go.Figure(),  # spam level gauge
+            go.Figure(),  # places bar chart
+            go.Figure(),  # tweets timeline chart
             html.P("No data available for summary."),  # analysis summary
             [],  # social network options
             [],  # engagement options
             html.P("No positive tweets to display."),  # positive tweets
-            html.P("No negative tweets to display."),   # negative tweets
-            "0",  # spam count
-            "نسبة الرسائل المشبوهة: 0%"  # spam percentage
+            html.P("No negative tweets to display.")   # negative tweets
         )
+
 
 if __name__ == '__main__':
     import os
@@ -2666,4 +2920,3 @@ if __name__ == '__main__':
     
     print(f"Dashboard will be available at: http://{host}:{port}")
     app.run_server(debug=False, host=host, port=port)
-
