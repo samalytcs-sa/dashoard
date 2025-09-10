@@ -631,6 +631,40 @@ def generate_summary(texts, sentiments, emotions_list):
     
     return summary
 
+def create_emergency_summary(df):
+    """Create a basic summary when all else fails"""
+    if df is None or df.empty:
+        return "لا توجد بيانات متاحة للتحليل."
+    
+    row_count = len(df)
+    col_count = len(df.columns)
+    
+    return f"""
+# ملخص البيانات الأساسي
+
+📊 **إحصائيات عامة:**
+- إجمالي السجلات: {row_count:,}
+- عدد الأعمدة: {col_count}
+
+📈 **حالة التحليل:**
+- تم تحميل البيانات بنجاح
+- التحليل المتقدم قيد التطوير
+
+🔄 **الخطوات التالية:**
+- سيتم إجراء تحليل المشاعر تلقائياً
+- رفع ملفات إضافية لتحليل أعمق
+"""
+
+def test_gemini_api():
+    """Test if Gemini API is working"""
+    try:
+        test_response = model.generate_content("Test message")
+        print(f"Gemini API test successful: {test_response.text[:50]}...")
+        return True
+    except Exception as e:
+        print(f"Gemini API test failed: {e}")
+        return False
+
 # حساب التفاعل باستخدام عدد المفضلات وعدد إعادة التغريد
 def calculate_engagement_metrics(df):
     """
@@ -2617,6 +2651,8 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
         
         # Perform AI analysis on uploaded data
         print("Starting AI sentiment analysis...")
+        print(f"Starting AI analysis. Text column: {text_column}")
+        print(f"Combined DF shape: {combined_df.shape}")
         
         # Extract texts for AI analysis - prioritize by likes and followers
         texts_for_analysis = []
@@ -2662,7 +2698,10 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
             texts_for_analysis = [text for text in sample_texts if len(str(text).strip()) > 10]
             print(f"Selected {len(texts_for_analysis)} top engagement tweets for AI analysis")
         
+        print(f"Texts for analysis count: {len(texts_for_analysis)}")
+        
         if texts_for_analysis:
+            print("About to call AI analysis...")
             try:
                 # Perform batch AI sentiment analysis with larger batch size for better performance
                 print("Performing AI sentiment analysis...")
@@ -2697,13 +2736,23 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                 print(f"AI analysis completed: {len(all_sentiments)} sentiments analyzed")
                 
             except Exception as e:
-                print(f"AI analysis failed: {str(e)}")
+                print(f"AI analysis failed with error: {e}")
+                print(f"Falling back to basic summary generation...")
                 # Use cached results or empty results
                 all_texts = cached_ai_results.get('texts', [])
                 all_sentiments = cached_ai_results.get('sentiments', [])
                 all_emotions = cached_ai_results.get('emotions', [])
                 positive_tweets = cached_ai_results.get('positive_tweets', [])
                 negative_tweets = cached_ai_results.get('negative_tweets', [])
+                
+                # Generate basic summary as fallback
+                basic_summary = generate_summary(
+                    texts_for_analysis if texts_for_analysis else [],
+                    all_sentiments if all_sentiments else [],
+                    all_emotions if all_emotions else []
+                )
+                cached_ai_results['summary'] = basic_summary
+                print(f"Generated fallback summary: {basic_summary[:100]}...")
         else:
             print("No suitable texts found for AI analysis")
             # Use cached results or empty results
@@ -2776,10 +2825,22 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
                 ])
             ]) if cached_ai_results['negative_tweets'] else html.P("No negative tweets found.", className="text-muted")
         else:
-            # No AI analysis available yet
-            summary_content = html.P("AI analysis will be available after data upload.", className="text-muted")
+            # Generate basic summary even if AI analysis failed
+            basic_summary = generate_summary(
+                texts_for_analysis if texts_for_analysis else [],
+                all_sentiments if all_sentiments else [],
+                all_emotions if all_emotions else []
+            )
+            summary_content = dcc.Markdown(basic_summary)
             positive_content = html.P("No positive tweets to display.", className="text-muted")
             negative_content = html.P("No negative tweets to display.", className="text-muted")
+            print(f"Using basic summary: {basic_summary[:100]}...")
+        
+        # Emergency fallback if summary_content is still empty or None
+        if summary_content is None or (hasattr(summary_content, 'children') and not summary_content.children):
+            emergency_summary = create_emergency_summary(filtered_df)
+            summary_content = dcc.Markdown(emergency_summary)
+            print("Using emergency summary as fallback")
         
         # Create engagement scatter plot
         engagement_fig = create_engagement_scatter(filtered_df)
@@ -2913,6 +2974,9 @@ def update_dashboard(contents, min_followers, min_retweets, social_networks, eng
 if __name__ == '__main__':
     import os
     print("Starting Dash Arabic Hashtag & Sentiment Analysis Dashboard...")
+    
+    # Test Gemini API at startup
+    test_gemini_api()
     
     # Get port from environment variable (Render sets this automatically)
     port = int(os.environ.get('PORT', 8050))
