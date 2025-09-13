@@ -1523,4 +1523,10 @@ def download_influencers_csv(n_clicks):
 
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8053)
+    # Get port from environment variable or default to 8053
+    port = int(os.environ.get('PORT', 8053))
+    # For deployment, bind to 0.0.0.0, for local development use 127.0.0.1
+    host = '0.0.0.0' if 'PORT' in os.environ else '127.0.0.1'
+    
+    app.run_server(debug=False, host=host, port=port)
+        
